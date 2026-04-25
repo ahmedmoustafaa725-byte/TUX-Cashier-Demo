@@ -2527,17 +2527,32 @@ const BASE_EXTRAS = [
     equipmentMinutes: {},
   },
 ];
+const demoDate = (daysAgo = 0, hour = 12, minute = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() - Number(daysAgo || 0));
+  d.setHours(hour, minute, 0, 0);
+  return d;
+};
 const DEFAULT_INVENTORY = [
-  { id: "meat",   name: "Meat",   unit: "g",     qty: 0, costPerUnit: 0, minQty: 0 },
-  { id: "cheese", name: "Cheese", unit: "slices",qty: 0, costPerUnit: 0, minQty: 0 },
+  { id: "meat", name: "Meat", unit: "g", qty: 7200, costPerUnit: 0.54, minQty: 3000 },
+  { id: "cheese", name: "Cheese", unit: "slices", qty: 120, costPerUnit: 3.2, minQty: 45 },
+  { id: "buns", name: "Burger Bun", unit: "piece", qty: 96, costPerUnit: 2.3, minQty: 30 },
+  { id: "potato", name: "Potato", unit: "kg", qty: 34, costPerUnit: 24.5, minQty: 10 },
+  { id: "oil", name: "Frying Oil", unit: "L", qty: 20, costPerUnit: 57, minQty: 8 },
+  { id: "soda", name: "Soda Syrup", unit: "L", qty: 16, costPerUnit: 38, minQty: 6 },
+  { id: "sauce", name: "Signature Sauce", unit: "kg", qty: 9, costPerUnit: 92, minQty: 3 },
 ];
 const DEFAULT_UTILITY_BILLS = {
-  electricity: { amount: 0, units: 0 },
-  gas: { amount: 0, units: 0 },
-  water: { amount: 0, units: 0 },
+  electricity: { amount: 4120, units: 1840 },
+  gas: { amount: 1395, units: 310 },
+  water: { amount: 640, units: 12800 },
 };
-const DEFAULT_LABOR_PROFILE = { payout: 0, productiveHours: 0 };
-const BASE_EQUIPMENT = [];
+const DEFAULT_LABOR_PROFILE = { payout: 6850, productiveHours: 164 };
+const BASE_EQUIPMENT = [
+  { id: "eq_griddle", name: "Main Griddle", electricKw: 4.8, gasM3PerHour: 0, waterLPerMin: 0 },
+  { id: "eq_fryer", name: "Twin Fryer", electricKw: 7.2, gasM3PerHour: 0, waterLPerMin: 0 },
+  { id: "eq_dish", name: "Dishwasher", electricKw: 1.4, gasM3PerHour: 0, waterLPerMin: 3.2 },
+];
 const BASE_WORKERS = ["Hassan","Andiel", "Warda", "Ahmed", "Hazem",];
 const DEFAULT_PAYMENT_METHODS = ["Cash", "Card", "Instapay"];
 const DEFAULT_ORDER_TYPES = ["Take-Away", "Dine-in", "Delivery"];
@@ -2578,11 +2593,98 @@ const BASE_WORKER_PROFILES = [
   { id: "w_hassan", name: "Hassan", pin: "1234", rate: 41.67, isActive: false },
   { id: "w_andiel", name: "Andiel", pin: "2345", rate: 31.67, isActive: false },
   { id: "w_warda",  name: "Warda",  pin: "3456", rate: 18.33, isActive: false },
+  { id: "w_ahmed",  name: "Ahmed",  pin: "4567", rate: 28.5, isActive: false },
+  { id: "w_hazem",  name: "Hazem",  pin: "5678", rate: 30, isActive: false },
 ];
 const DEFAULT_ZONES = [
   { id: "zone-a", name: "Zone A (Nearby)", fee: 20 },
   { id: "zone-b", name: "Zone B (Medium)", fee: 30 },
   { id: "zone-c", name: "Zone C (Far)", fee: 40 },
+];
+const DEFAULT_PURCHASE_CATEGORIES = [
+  { id: "cat_meat", name: "Meat", unit: "kg" },
+  { id: "cat_cheese", name: "Cheese", unit: "slice" },
+  { id: "cat_bread", name: "Burger Bun", unit: "piece" },
+  { id: "cat_potato", name: "Potato", unit: "kg" },
+  { id: "cat_packaging", name: "Packaging", unit: "piece" },
+];
+const DEMO_PURCHASES = [
+  { id: "p_demo_1", categoryId: "cat_meat", itemName: "Fresh beef batch", unit: "kg", qty: 28, unitPrice: 188, date: demoDate(4, 10, 15), ingredientId: "meat", invId: "" },
+  { id: "p_demo_2", categoryId: "cat_cheese", itemName: "Cheddar slices", unit: "slice", qty: 180, unitPrice: 2.9, date: demoDate(3, 11, 0), ingredientId: "cheese", invId: "" },
+  { id: "p_demo_3", categoryId: "cat_bread", itemName: "Sesame buns", unit: "piece", qty: 120, unitPrice: 2.1, date: demoDate(2, 9, 45), ingredientId: "buns", invId: "" },
+  { id: "p_demo_4", categoryId: "cat_potato", itemName: "Frozen fries potatoes", unit: "kg", qty: 40, unitPrice: 22, date: demoDate(1, 8, 30), ingredientId: "potato", invId: "" },
+];
+const DEMO_ORDERS = [
+  {
+    orderNo: 1861, date: demoDate(3, 13, 5), worker: "Hassan", payment: "Cash", paymentParts: [{ method: "Cash", amount: 210 }],
+    orderType: "Take-Away", deliveryFee: 0, deliveryName: "Sara Nabil", deliveryPhone: "01033445588", deliveryAddress: "", deliveryZoneId: "",
+    total: 210, itemsTotal: 210, cashReceived: 220, changeDue: 10, done: true, voided: false, note: "No onions",
+    cart: [{ id: 2, name: "Double Smashed Patty", price: 140, qty: 1, extras: [{ id: 103, name: "Cheese", price: 15 }], uses: {} }, { id: 5, name: "Classic Fries", price: 25, qty: 1, extras: [], uses: {} }, { id: 12, name: "Soda", price: 20, qty: 1, extras: [], uses: {} }],
+    source: "onsite",
+  },
+  {
+    orderNo: 1862, date: demoDate(2, 16, 25), worker: "Ahmed", payment: "Card", paymentParts: [{ method: "Card", amount: 280 }],
+    orderType: "Delivery", deliveryFee: 30, deliveryName: "Karim Adel", deliveryPhone: "01124567890", deliveryAddress: "Nasr City - Abbas El Akkad", deliveryZoneId: "zone-b",
+    total: 280, itemsTotal: 250, cashReceived: null, changeDue: null, done: true, voided: false, note: "",
+    cart: [{ id: 15, name: "TUXIFY Double", price: 160, qty: 1, extras: [{ id: 102, name: "Bacon", price: 20 }], uses: {} }, { id: 6, name: "Cheese Fries", price: 40, qty: 1, extras: [], uses: {} }, { id: 13, name: "Water", price: 10, qty: 1, extras: [], uses: {} }, { id: 12, name: "Soda", price: 20, qty: 1, extras: [], uses: {} }],
+    source: "onsite",
+  },
+  {
+    orderNo: 1863, date: demoDate(1, 19, 10), worker: "Andiel", payment: "Instapay", paymentParts: [{ method: "Instapay", amount: 190 }],
+    orderType: "Take-Away", deliveryFee: 0, deliveryName: "Mariam Samy", deliveryPhone: "01288665544", deliveryAddress: "", deliveryZoneId: "",
+    total: 190, itemsTotal: 190, cashReceived: null, changeDue: null, done: false, voided: false, note: "Extra crispy fries",
+    cart: [{ id: 1, name: "Single Smashed Patty", price: 95, qty: 1, extras: [{ id: 108, name: "Tux Sauce", price: 10 }], uses: {} }, { id: 8, name: "Tux Fries", price: 75, qty: 1, extras: [], uses: {} }, { id: 13, name: "Water", price: 10, qty: 1, extras: [], uses: {} }],
+    source: "onsite",
+  },
+  {
+    orderNo: 1864, date: demoDate(0, 12, 40), worker: "Warda", payment: "Cash", paymentParts: [{ method: "Cash", amount: 135 }],
+    orderType: "Delivery", deliveryFee: 20, deliveryName: "Omar Tarek", deliveryPhone: "01099112233", deliveryAddress: "Dokki - Tahrir St.", deliveryZoneId: "zone-a",
+    total: 135, itemsTotal: 115, cashReceived: 150, changeDue: 15, done: false, voided: false, note: "",
+    cart: [{ id: 10, name: "Classic Hawawshi", price: 80, qty: 1, extras: [], uses: {} }, { id: 12, name: "Soda", price: 20, qty: 1, extras: [], uses: {} }, { id: 13, name: "Water", price: 10, qty: 1, extras: [], uses: {} }],
+    source: "onsite",
+  },
+];
+const DEMO_EXPENSES = [
+  { id: "exp_demo_1", name: "Cleaning Supplies", unit: "bottle", qty: 6, unitPrice: 45, note: "Weekly kitchen sanitation", date: demoDate(4, 20, 30) },
+  { id: "exp_demo_2", name: "Courier Fuel Support", unit: "day", qty: 2, unitPrice: 120, note: "Peak-hours delivery support", date: demoDate(2, 21, 10) },
+  { id: "exp_demo_3", name: "Packaging Gloves", unit: "box", qty: 3, unitPrice: 95, note: "Front counter stock refill", date: demoDate(1, 18, 50) },
+];
+const DEMO_CUSTOMERS = [
+  { id: "c_demo_1", name: "Karim Adel", phone: "01124567890", address: "Nasr City - Abbas El Akkad", tags: ["Regular"], totalSpend: 840, orderCount: 4, lastOrderTotal: 280, lastOrderNo: 1862, zoneId: "zone-b", firstOrderAt: demoDate(9, 13, 0), lastOrderAt: demoDate(2, 16, 25) },
+  { id: "c_demo_2", name: "Sara Nabil", phone: "01033445588", address: "Heliopolis - Baghdad St.", tags: ["VIP"], totalSpend: 620, orderCount: 3, lastOrderTotal: 210, lastOrderNo: 1861, zoneId: "zone-a", firstOrderAt: demoDate(7, 14, 40), lastOrderAt: demoDate(3, 13, 5) },
+  { id: "c_demo_3", name: "Omar Tarek", phone: "01099112233", address: "Dokki - Tahrir St.", tags: ["New"], totalSpend: 135, orderCount: 1, lastOrderTotal: 135, lastOrderNo: 1864, zoneId: "zone-a", firstOrderAt: demoDate(0, 12, 40), lastOrderAt: demoDate(0, 12, 40) },
+];
+const DEMO_WORKER_SESSIONS = [
+  { id: "ws_demo_1", name: "Hassan", signInAt: demoDate(3, 11, 0), signOutAt: demoDate(3, 19, 30) },
+  { id: "ws_demo_2", name: "Ahmed", signInAt: demoDate(2, 12, 0), signOutAt: demoDate(2, 20, 0) },
+  { id: "ws_demo_3", name: "Andiel", signInAt: demoDate(1, 11, 30), signOutAt: demoDate(1, 18, 15) },
+];
+const DEMO_BANK_TX = [
+  { id: "tx_demo_1", type: "init", amount: 5200, worker: "Hassan", note: "Auto Init from day margin", date: demoDate(3, 11, 2), locked: true, source: "auto_day_margin" },
+  { id: "tx_demo_2", type: "deposit", amount: 1500, worker: "Ahmed", note: "Cash drop to safe", date: demoDate(2, 17, 35) },
+  { id: "tx_demo_3", type: "withdraw", amount: 900, worker: "Warda", note: "Supplier payment (packaging)", date: demoDate(1, 15, 20) },
+  { id: "tx_demo_4", type: "adjustUp", amount: 120, worker: "Andiel", note: "End-day cash recount", date: demoDate(0, 22, 5) },
+];
+const DEMO_RECON_HISTORY = [
+  {
+    id: "rec_demo_1", savedBy: "Hassan", at: demoDate(2, 23, 10), totalVariance: -15,
+    breakdown: { Cash: { expected: 1890, actual: 1880, variance: -10 }, Card: { expected: 940, actual: 938, variance: -2 }, Instapay: { expected: 420, actual: 417, variance: -3 } },
+  },
+  {
+    id: "rec_demo_2", savedBy: "Ahmed", at: demoDate(1, 23, 25), totalVariance: 8,
+    breakdown: { Cash: { expected: 1730, actual: 1735, variance: 5 }, Card: { expected: 1120, actual: 1120, variance: 0 }, Instapay: { expected: 510, actual: 513, variance: 3 } },
+  },
+];
+const DEMO_BULK_INVENTORY_ITEMS = [
+  { id: "bulk_beef", name: "Frozen Beef Cartons", unit: "carton", stock: 12, minStock: 5, createdAt: demoDate(10, 10, 0).toISOString(), lastUsedAt: demoDate(0, 13, 0).toISOString(), lastBoughtAt: demoDate(3, 10, 0).toISOString() },
+  { id: "bulk_potato", name: "Potato Sacks", unit: "bag", stock: 18, minStock: 8, createdAt: demoDate(10, 10, 5).toISOString(), lastUsedAt: demoDate(0, 14, 0).toISOString(), lastBoughtAt: demoDate(2, 9, 10).toISOString() },
+  { id: "bulk_boxes", name: "Take-away Boxes", unit: "box", stock: 26, minStock: 12, createdAt: demoDate(9, 11, 0).toISOString(), lastUsedAt: demoDate(0, 20, 0).toISOString(), lastBoughtAt: demoDate(4, 8, 45).toISOString() },
+];
+const DEMO_BULK_INVENTORY_HISTORY = [
+  { id: "bh_demo_1", itemId: "bulk_beef", itemName: "Frozen Beef Cartons", type: "refill", qty: 8, unit: "carton", note: "Morning supplier delivery", timestamp: demoDate(3, 10, 0).toISOString() },
+  { id: "bh_demo_2", itemId: "bulk_beef", itemName: "Frozen Beef Cartons", type: "usage", qty: 3, unit: "carton", note: "Weekend prep", timestamp: demoDate(2, 18, 40).toISOString() },
+  { id: "bh_demo_3", itemId: "bulk_potato", itemName: "Potato Sacks", type: "usage", qty: 2, unit: "bag", note: "High fries demand", timestamp: demoDate(1, 21, 30).toISOString() },
+  { id: "bh_demo_4", itemId: "bulk_boxes", itemName: "Take-away Boxes", type: "refill", qty: 10, unit: "box", note: "Packaging restock", timestamp: demoDate(4, 9, 25).toISOString() },
 ];
 function normalizePurchaseCategories(arr = []) {
   return (arr || []).map((c, i) => {
@@ -3336,7 +3438,7 @@ const [cogsSort, setCogsSort] = useState({ key: "margin", dir: "asc" });
 const [inlinePriceDrafts, setInlinePriceDrafts] = useState({});
   const [historicalOrders, setHistoricalOrders] = useState(() => {
   const l = loadLocal();
-  const raw = Array.isArray(l.historicalOrders) ? l.historicalOrders : [];
+  const raw = Array.isArray(l.historicalOrders) ? l.historicalOrders : DEMO_ORDERS.filter((o) => o.done);
   return raw.map((order) => {
     const converted = {
       ...order,
@@ -3348,11 +3450,11 @@ const [inlinePriceDrafts, setInlinePriceDrafts] = useState({});
 });
 const [historicalExpenses, setHistoricalExpenses] = useState(() => {
   const l = loadLocal();
-  return l.historicalExpenses || [];
+  return l.historicalExpenses || [DEMO_EXPENSES[0], DEMO_EXPENSES[1]];
 });
 const [historicalPurchases, setHistoricalPurchases] = useState(() => {
   const l = loadLocal();
-  return l.historicalPurchases || [];
+  return l.historicalPurchases || [DEMO_PURCHASES[0], DEMO_PURCHASES[1]];
 });
 const [reportFilter, setReportFilter] = useState(() => {
   const l = loadLocal();
@@ -3414,11 +3516,11 @@ setMenu((arr) => [
 const [inventory, setInventory] = useState(DEFAULT_INVENTORY);
 const [bulkInventoryItems, setBulkInventoryItems] = useState(() => {
   const l = loadLocal();
-  return Array.isArray(l.bulkInventoryItems) ? l.bulkInventoryItems : [];
+  return Array.isArray(l.bulkInventoryItems) ? l.bulkInventoryItems : DEMO_BULK_INVENTORY_ITEMS;
 });
 const [bulkInventoryHistory, setBulkInventoryHistory] = useState(() => {
   const l = loadLocal();
-  return Array.isArray(l.bulkInventoryHistory) ? l.bulkInventoryHistory : [];
+  return Array.isArray(l.bulkInventoryHistory) ? l.bulkInventoryHistory : DEMO_BULK_INVENTORY_HISTORY;
 });
 const [bulkInventoryView, setBulkInventoryView] = useState("table");
 const [bulkNewItemName, setBulkNewItemName] = useState("");
@@ -3468,9 +3570,9 @@ const [inventorySnapshot, setInventorySnapshot] = useState([]);
 const [inventoryLockedAt, setInventoryLockedAt] = useState(null);
 const [showLowStock, setShowLowStock] = useState(false);
 const [purchaseCategories, setPurchaseCategories] = useState(() =>
-  normalizePurchaseCategories(loadLocal().purchaseCategories || [])
+  normalizePurchaseCategories(loadLocal().purchaseCategories || DEFAULT_PURCHASE_CATEGORIES)
 );
-const [purchases, setPurchases] = useState([]);
+const [purchases, setPurchases] = useState(() => DEMO_PURCHASES);
 const [purchaseFilter, setPurchaseFilter] = useState("day");
 const [purchaseCatFilterId, setPurchaseCatFilterId] = useState("");
 const [purchaseDay, setPurchaseDay] = useState(
@@ -3732,7 +3834,7 @@ const resetUsageViewAdmin = () => {
 const [newWName, setNewWName] = useState("");
 const [newWPin, setNewWPin] = useState("");
 const [newWRate, setNewWRate] = useState("");
-const [workerSessions, setWorkerSessions] = useState([]);
+const [workerSessions, setWorkerSessions] = useState(() => DEMO_WORKER_SESSIONS);
 const workerSessionsRef = useRef(workerSessions);
 useEffect(() => {
   workerSessionsRef.current = workerSessions;
@@ -3754,7 +3856,7 @@ const activeWorkers = useMemo(() => {
   const names = [...new Set(open.map(s => s.name))];
   return names;
 }, [workerSessions]);
-const [orders, setOrders] = useState([]);
+const [orders, setOrders] = useState(() => DEMO_ORDERS.map(enrichOrderWithChannel));
 const [onlineFbUser, setOnlineFbUser] = useState(null);const [orderBoardFilter, setOrderBoardFilter] = useState("onsite");
 const [lastSeenOnlineOrderTs, setLastSeenOnlineOrderTs] = useState(() => {
   const l = loadLocal();
@@ -3767,7 +3869,7 @@ const [onlineViewCutoff, setOnlineViewCutoff] = useState(() => {
   return Number.isFinite(v) ? v : 0;
 });
 const [onlineOrdersRaw, setOnlineOrdersRaw] = useState([]);
-const onlineOrderSourcesRef = useRef({});const [bankTx, setBankTx] = useState([]);
+const onlineOrderSourcesRef = useRef({});const [bankTx, setBankTx] = useState(() => DEMO_BANK_TX);
 const [onlineOrderStatus, setOnlineOrderStatus] = useState(() => {
   const raw = loadLocal()?.onlineOrderStatus;
   if (!raw || typeof raw !== "object") return {};
@@ -3778,7 +3880,7 @@ const [onlineOrderStatus, setOnlineOrderStatus] = useState(() => {
   }
   return out;
 });
-const [reconCounts, setReconCounts] = useState({});
+const [reconCounts, setReconCounts] = useState({ Cash: 1735, Card: 1120, Instapay: 513 });
 const handleReconCountChange = useCallback((method, rawValue) => {
   setReconCounts((rc) => {
     const next = { ...rc };
@@ -3797,7 +3899,7 @@ const handleReconCountChange = useCallback((method, rawValue) => {
     return next;
   });
 }, []);const [reconSavedBy, setReconSavedBy] = useState("");
-const [reconHistory, setReconHistory] = useState([]);
+const [reconHistory, setReconHistory] = useState(() => DEMO_RECON_HISTORY);
 const accountedOnlineOrders = useMemo(() => {
   const seen = new Set();
   for (const ord of orders || []) {
@@ -3968,7 +4070,7 @@ const [deliveryAddress, setDeliveryAddress] = useState("");
 const [deliveryZoneId, setDeliveryZoneId] = useState("");
 const [customerName, setCustomerName] = useState("");
 const [customerPhone, setCustomerPhone] = useState("");
-const [customers, setCustomers] = useState([]);                         
+const [customers, setCustomers] = useState(() => DEMO_CUSTOMERS);                         
 const [deliveryZones, setDeliveryZones] = useState(DEFAULT_ZONES);
 const [customerSearch, setCustomerSearch] = useState("");
 const [newZoneName, setNewZoneName] = useState("");
@@ -4016,7 +4118,7 @@ const unlockAdminPin = (n) => {
 };
   const [unlockedPins, setUnlockedPins] = useState({}); 
   const [nextOrderNo, setNextOrderNo] = useState(1);
-  const [expenses, setExpenses] = useState([]);
+  const [expenses, setExpenses] = useState(() => DEMO_EXPENSES);
 const lastLockedRef = useRef([]);
 useEffect(() => {
   const lockedNow = (expenses || []).filter(isExpenseLocked);
@@ -4294,6 +4396,32 @@ if (typeof l.nextOrderNo === "number") setNextOrderNo(l.nextOrderNo);
   }
   setLocalHydrated(true);
 }, [localHydrated]);
+useEffect(() => {
+  if (!localHydrated) return;
+  if (!orders.length) setOrders(DEMO_ORDERS.map(enrichOrderWithChannel));
+  if (!expenses.length) setExpenses(DEMO_EXPENSES);
+  if (!customers.length) setCustomers(DEMO_CUSTOMERS);
+  if (!workerSessions.length) setWorkerSessions(DEMO_WORKER_SESSIONS);
+  if (!bankTx.length) setBankTx(DEMO_BANK_TX);
+  if (!reconHistory.length) setReconHistory(DEMO_RECON_HISTORY);
+  if (!purchases.length) setPurchases(DEMO_PURCHASES);
+  if (!purchaseCategories.length)
+    setPurchaseCategories(normalizePurchaseCategories(DEFAULT_PURCHASE_CATEGORIES));
+  if (!bulkInventoryItems.length) setBulkInventoryItems(DEMO_BULK_INVENTORY_ITEMS);
+  if (!bulkInventoryHistory.length) setBulkInventoryHistory(DEMO_BULK_INVENTORY_HISTORY);
+}, [
+  localHydrated,
+  orders.length,
+  expenses.length,
+  customers.length,
+  workerSessions.length,
+  bankTx.length,
+  reconHistory.length,
+  purchases.length,
+  purchaseCategories.length,
+  bulkInventoryItems.length,
+  bulkInventoryHistory.length,
+]);
 useEffect(() => { saveLocalPartial({ menu }); }, [menu]);
   useEffect(() => {
 saveLocalPartial({
@@ -8474,6 +8602,9 @@ const generatePurchasesPDF = () => {
           Sign in
         </button>
       </div>
+      <small style={{ fontWeight: 600, color: dark ? "#ffe082" : "#8d6e00" }}>
+        Demo PIN: 1234
+      </small>
       <small style={{ opacity:.8 }}>First sign-in starts the shift automatically.</small>
     </>
   ) : (
