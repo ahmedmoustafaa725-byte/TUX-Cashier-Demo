@@ -1,26 +1,185 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import {
-  getFirestore,
-  serverTimestamp,
-  Timestamp,
-  collection,
-  addDoc,
-  updateDoc,
-  getDoc,
-  setDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  orderBy,
-  where,
-  doc as fsDoc,
-  writeBatch,
-  runTransaction, // <-- atomic counter
-} from "firebase/firestore";
+
+const DEMO_FIRESTORE_KEY = "tux_demo_firestore_v1";
+const demoApps = [];
+
+class Timestamp {
+  constructor(ms) {
+    this._ms = Number(ms || Date.now());
+  }
+  toDate() { return new Date(this._ms); }
+  toMillis() { return this._ms; }
+  static fromDate(date) { return new Timestamp(new Date(date).getTime()); }
+  static fromMillis(ms) { return new Timestamp(ms); }
+}
+
+const serverTimestamp = () => Timestamp.fromMillis(Date.now());
+
+function loadDemoStore() {
+  try {
+    const raw = localStorage.getItem(DEMO_FIRESTORE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : { docs: {} };
+  } catch {
+    return { docs: {} };
+  }
+}
+function saveDemoStore(store) {
+  try { localStorage.setItem(DEMO_FIRESTORE_KEY, JSON.stringify(store)); } catch {}
+}
+function readDoc(path) {
+  const store = loadDemoStore();
+  return store.docs?.[path] ?? null;
+}
+function writeDoc(path, data, merge = false) {
+  const store = loadDemoStore();
+  const current = store.docs?.[path] ?? {};
+  const next = merge ? { ...current, ...data } : data;
+  store.docs = store.docs || {};
+  store.docs[path] = next;
+  saveDemoStore(store);
+}
+function listCollectionDocs(colPath) {
+  const store = loadDemoStore();
+  const prefix = `${colPath}/`;
+  return Object.entries(store.docs || {})
+    .filter(([path]) => path.startsWith(prefix) && !path.slice(prefix.length).includes("/"))
+    .map(([path, data]) => ({ id: path.slice(prefix.length), path, data }));
+}
+function deleteDocPath(path) {
+  const store = loadDemoStore();
+  if (store.docs && Object.prototype.hasOwnProperty.call(store.docs, path)) {
+    delete store.docs[path];
+    saveDemoStore(store);
+  }
+}
+
+function initializeApp(config = {}, name = "[DEFAULT]") {
+  const existing = demoApps.find((a) => a.name === name);
+  if (existing) return existing;
+  const app = { name, options: config };
+  demoApps.push(app);
+  return app;
+}
+function getApps() { return demoApps; }
+function getApp(name = "[DEFAULT]") {
+  const app = demoApps.find((a) => a.name === name);
+  if (!app) throw new Error("Demo Firebase app not found");
+  return app;
+}
+function getAuth(app) {
+  return { app, currentUser: { uid: "demo-anon-user" } };
+}
+function onAuthStateChanged(auth, callback) {
+  Promise.resolve().then(() => callback(auth.currentUser || null));
+  return () => {};
+}
+async function signInAnonymously(auth) {
+  auth.currentUser = auth.currentUser || { uid: "demo-anon-user" };
+  return { user: auth.currentUser };
+}
+function getFirestore(app) { return { app, __demo: true }; }
+function fsDoc(db, ...segments) {
+  const path = segments.join("/");
+  return { db, path, id: segments[segments.length - 1] };
+}
+function collection(db, ...segments) {
+  return { db, path: segments.join("/") };
+}
+function where(field, op, value) { return { type: "where", field, op, value }; }
+function orderBy(field, direction = "asc") { return { type: "orderBy", field, direction }; }
+function query(base, ...constraints) {
+  return { base, constraints };
+}
+function makeDocSnap(id, data) {
+  return { id, exists: () => data != null, data: () => data };
+}
+function applyConstraints(rows, constraints = []) {
+  let out = [...rows];
+  for (const c of constraints) {
+    if (c.type === "where") {
+      out = out.filter((r) => {
+        const value = r.data?.[c.field];
+        const left = value instanceof Timestamp ? value.toMillis() : value;
+        const right = c.value instanceof Timestamp ? c.value.toMillis() : c.value;
+        if (c.op === "==") return left === right;
+        if (c.op === ">=") return left >= right;
+        if (c.op === "<=") return left <= right;
+        return true;
+      });
+    }
+    if (c.type === "orderBy") {
+      const dir = c.direction === "desc" ? -1 : 1;
+      out.sort((a, b) => {
+        const av = a.data?.[c.field] instanceof Timestamp ? a.data[c.field].toMillis() : a.data?.[c.field];
+        const bv = b.data?.[c.field] instanceof Timestamp ? b.data[c.field].toMillis() : b.data?.[c.field];
+        if (av === bv) return 0;
+        return av > bv ? dir : -dir;
+      });
+    }
+  }
+  return out;
+}
+async function getDoc(ref) {
+  return makeDocSnap(ref.id, readDoc(ref.path));
+}
+async function setDoc(ref, data, options = {}) {
+  writeDoc(ref.path, data, !!options.merge);
+}
+async function updateDoc(ref, data) {
+  writeDoc(ref.path, data, true);
+}
+async function addDoc(colRef, data) {
+  const id = `demo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const path = `${colRef.path}/${id}`;
+  writeDoc(path, data, false);
+  return { id, path };
+}
+async function getDocs(target) {
+  const base = target.base || target;
+  const constraints = target.constraints || [];
+  const docs = applyConstraints(listCollectionDocs(base.path), constraints).map((r) => ({ id: r.id, ref: { path: r.path, id: r.id }, data: () => r.data }));
+  return {
+    docs,
+    empty: docs.length === 0,
+    forEach: (cb) => docs.forEach(cb),
+  };
+}
+function onSnapshot(target, onNext, onError) {
+  Promise.resolve().then(async () => {
+    try {
+      if (target.path && target.id) {
+        const snap = await getDoc(target);
+        onNext(snap);
+      } else {
+        const snap = await getDocs(target);
+        onNext(snap);
+      }
+    } catch (err) {
+      if (typeof onError === "function") onError(err);
+    }
+  });
+  return () => {};
+}
+function writeBatch(db) {
+  const ops = [];
+  return {
+    update: (ref, data) => ops.push(() => updateDoc(ref, data)),
+    set: (ref, data, options) => ops.push(() => setDoc(ref, data, options)),
+    delete: (ref) => ops.push(async () => deleteDocPath(ref.path)),
+    commit: async () => { for (const op of ops) await op(); },
+  };
+}
+async function runTransaction(db, runner) {
+  const tx = {
+    get: async (ref) => getDoc(ref),
+    set: (ref, data, options) => setDoc(ref, data, options),
+    update: (ref, data) => updateDoc(ref, data),
+  };
+  return runner(tx);
+}
 
 export const toIso = (v) => {
   if (!v) return null;
@@ -443,65 +602,24 @@ function summarizePaymentParts(parts = [], fallbackMethod = "Online") {
   }
   return normalizePaymentMethodName(fallbackMethod) || fallbackMethod || "Online";
 }
-const firebaseConfig = {
-  apiKey: process.env.REACT_APP_CASHIER_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_CASHIER_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_CASHIER_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_CASHIER_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_CASHIER_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_CASHIER_FIREBASE_APP_ID,
-};
-
-const onlineFirebaseConfig = {
-  apiKey: process.env.REACT_APP_MENU_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_MENU_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_MENU_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_MENU_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_MENU_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_MENU_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_MENU_FIREBASE_MEASUREMENT_ID,
-};
-
-const ONLINE_FIREBASE_APP_NAME = process.env.REACT_APP_ONLINE_FIREBASE_APP_NAME;
+const ONLINE_FIREBASE_APP_NAME = "tux-demo-online";
 
 // For EmailJS
 const EMAILJS_SERVICE_ID = process.env.REACT_APP_EMAILJS_SERVICE_ID;
 const EMAILJS_TEMPLATE_ID = process.env.REACT_APP_EMAILJS_TEMPLATE_ID;
 const EMAILJS_PUBLIC_KEY = process.env.REACT_APP_EMAILJS_PUBLIC_KEY;
 
-
 async function sendEmailJsEmail(templateParams = {}) {
-  const fetchFn =
-    typeof fetch === "function"
-      ? fetch
-      : typeof window !== "undefined" && typeof window.fetch === "function"
-      ? window.fetch.bind(window)
-      : null;
+  const fetchFn = typeof fetch === "function" ? fetch : (typeof window !== "undefined" ? window.fetch?.bind(window) : null);
   if (!fetchFn) {
-    throw new Error("Fetch API unavailable for EmailJS request");
-  }
-
-  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-    const missingKeys = [];
-    if (!EMAILJS_SERVICE_ID) missingKeys.push("REACT_APP_EMAILJS_SERVICE_ID");
-    if (!EMAILJS_TEMPLATE_ID) missingKeys.push("REACT_APP_EMAILJS_TEMPLATE_ID");
-    if (!EMAILJS_PUBLIC_KEY) missingKeys.push("REACT_APP_EMAILJS_PUBLIC_KEY");
-    const message =
-      "Online-order confirmation emails cannot be sent until EmailJS credentials are configured. " +
-      (missingKeys.length ? `Missing: ${missingKeys.join(", ")}.` : "");
-    if (typeof window !== "undefined" && typeof window.alert === "function") {
-      window.alert(message);
-    } else {
-      console.warn(message);
-    }
-    console.error("EmailJS credentials missing", {
-      missingKeys,
-      templateParams,
-    });
+    console.warn("EmailJS skipped in demo: fetch unavailable", templateParams);
     return;
   }
-
-  const response = await fetchFn("https://api.emailjs.com/api/v1.0/email/send", {
+  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+    console.warn("EmailJS skipped in demo: missing credentials", templateParams);
+    return;
+  }
+  await fetchFn("https://api.emailjs.com/api/v1.0/email/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -511,49 +629,29 @@ async function sendEmailJsEmail(templateParams = {}) {
       template_params: templateParams,
     }),
   });
-
-  if (!response.ok) {
-    let errorBody = "";
-    try {
-      errorBody = await response.text();
-    } catch (err) {
-      errorBody = "";
-    }
-    throw new Error(
-      `EmailJS request failed with status ${response.status}${errorBody ? `: ${errorBody}` : ""}`
-    );
-  }
 }
 
 function ensureFirebase() {
-  const theApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  const theApp = getApps().length ? getApp() : initializeApp({ mode: "demo" });
   const auth = getAuth(theApp);
   const db = getFirestore(theApp);
   return { auth, db };
 }
 
 function ensureOnlineFirebase() {
-  if (!onlineFirebaseConfig?.projectId) return null;
   try {
     return getApp(ONLINE_FIREBASE_APP_NAME);
   } catch (err) {
-    try {
-      return initializeApp(onlineFirebaseConfig, ONLINE_FIREBASE_APP_NAME);
-    } catch (initErr) {
-      console.error("Failed to initialize online orders Firebase app", initErr);
-      return null;
-    }
+    return initializeApp({ mode: "demo-online" }, ONLINE_FIREBASE_APP_NAME);
   }
 }
 function getOnlineServices() {
   const app = ensureOnlineFirebase();
-  if (!app) return { onlineAuth: null, onlineDb: null };
   return {
     onlineAuth: getAuth(app),
     onlineDb: getFirestore(app),
   };
 }
-
 
 const SHOP_ID = "tux";
 // In your React POS app code (App.js)
@@ -2662,6 +2760,7 @@ const UTILITY_TYPES = [
   { name: "Gas", note: "Gas Bill" }
 ];
 const norm = (v) => String(v ?? "").trim();
+const adminPinDemoHint = (n) => `Demo hint: Admin ${n} PIN is ${DEFAULT_ADMIN_PINS[n] || "1234"}.`;
 const isExpenseVoidEligible = (t) => {
   const k = norm(t).toLowerCase();
   return !!k && k !== "take-away" && k !== "take away" && k !== "dine-in" && k !== "dine in";
@@ -3904,7 +4003,7 @@ const verifyAdminPin = (n) => {
     alert(`Admin ${n} has no PIN set; add it in Settings → Admin PINs.`);
     return false;
   }
-  const entered = window.prompt(`Enter PIN for Admin ${n}:`, "");
+  const entered = window.prompt(`Enter PIN for Admin ${n}. ${adminPinDemoHint(n)}`, "");
   if (entered == null) return false;
   return norm(entered) === expected;
 };
@@ -5793,7 +5892,7 @@ const workerMonthlyTotalPay = useMemo(
     }
 
 
-    const entered = window.prompt(`Enter PIN for Admin ${n}:`, "");
+    const entered = window.prompt(`Enter PIN for Admin ${n}. ${adminPinDemoHint(n)}`, "");
     if (entered == null) return null;
 
     const expected = norm(adminPins[n]);
